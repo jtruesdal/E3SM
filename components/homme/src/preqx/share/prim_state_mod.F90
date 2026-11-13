@@ -645,14 +645,19 @@ contains
   end subroutine prim_printstate
    
   subroutine print_software_statistics(hybrid, nets, nete)
+    use iso_c_binding, only: c_long_long
     integer :: GPTLget_memusage
 
     type(hybrid_t), intent(in) :: hybrid
     integer, intent(in) :: nets, nete
     integer :: ok, ie
-    integer(8) :: size, rss_int, share, text, datastack
+    ! GPTLget_memusage returns its results through C long long arguments.  Older GPTL
+    ! versions (still linked by some host models, e.g. CESM) take C int instead; zeroing
+    ! the variables first gives correct values with either version on little-endian systems.
+    integer(kind=c_long_long) :: size, rss_int, share, text, datastack
     real(kind=real_kind) :: rss, rss_min, rss_max, rss_mean
 
+    size = 0; rss_int = 0; share = 0; text = 0; datastack = 0
     ok = GPTLget_memusage(size, rss_int, share, text, datastack)
     rss = rss_int
     rss_min = ParallelMin(rss, hybrid)
