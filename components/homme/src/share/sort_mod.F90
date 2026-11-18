@@ -22,20 +22,18 @@ contains
   end subroutine sortints
 
   subroutine sortints_impl(a, nrow, ncol)
-    use iso_c_binding, only: c_int, c_size_t, c_ptr, c_sizeof, c_loc
+    use iso_c_binding, only: c_int, c_size_t, c_ptr, c_sizeof, c_loc, c_funptr, c_funloc
 
+    ! The comparison function is passed as a C function pointer (c_funloc).
+    ! Passing the Fortran procedure against a bind(c) dummy interface is
+    ! rejected by nvfortran 25.x as an interface mismatch (the actual
+    ! argument's binding label differs from the dummy's).
     interface
        subroutine qsort(base, nmemb, size, cmp) bind(c)
-         use iso_c_binding, only: c_ptr, c_size_t
+         use iso_c_binding, only: c_ptr, c_size_t, c_funptr
          type (c_ptr), value, intent(in) :: base
          integer (kind=c_size_t), value, intent(in) :: nmemb, size
-         interface
-            function cmp(a, b) result(o) bind(c)
-              use iso_c_binding, only: c_int
-              integer (kind=c_int), intent(in) :: a, b
-              integer (kind=c_int) :: o
-            end function cmp
-         end interface
+         type (c_funptr), value, intent(in) :: cmp
        end subroutine qsort
     end interface
 
@@ -47,7 +45,7 @@ contains
     a_ptr = c_loc(a)
     r_s = nrow
     c_s = ncol
-    call qsort(a_ptr, c_s, r_s*c_sizeof(c_int), cmp_ints)
+    call qsort(a_ptr, c_s, r_s*c_sizeof(c_int), c_funloc(cmp_ints))
   end subroutine sortints_impl
 
   function cmp_ints(a, b) result(o) bind(c, name='')
