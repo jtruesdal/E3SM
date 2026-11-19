@@ -23,6 +23,9 @@ module prim_driver_mod
   ! per-step forcing push and state pull are skipped (the state is still
   ! pulled on diagnostics steps).  Set by the host before the first step.
   logical, public :: cam_device_coupling = .false.
+  ! Finer control (diagnostics): skip only the forcing push, or only the state pull.
+  logical, public :: cam_skip_forcing_push = .false.
+  logical, public :: cam_skip_state_pull   = .false.
 
   public :: prim_init2
   public :: prim_run_subcycle
@@ -648,7 +651,7 @@ contains
 #elif defined(SCREAM)
 
 #elif defined(CAM)
-    if (nsplit_iter == 1 .and. .not. cam_device_coupling) then
+    if (nsplit_iter == 1 .and. .not. (cam_device_coupling .or. cam_skip_forcing_push)) then
        compute_forcing_and_push_to_c = .true.
     endif
 #else
@@ -709,7 +712,8 @@ contains
 !the statefreq test, because tl%nstep == nstep_end once prim_run_subcycle_c has
 !returned, and it is the gate on the only f90 reader in this routine
 !(prim_printstate). This mirrors the SCREAM branch above.
-    push_to_f = ((nsplit_iter == nsplit) .and. .not. cam_device_coupling) .or. compute_diagnostics
+    push_to_f = ((nsplit_iter == nsplit) .and. .not. (cam_device_coupling .or. cam_skip_state_pull)) &
+                .or. compute_diagnostics
 
 #else
 !standalone homme, not benchmarks
